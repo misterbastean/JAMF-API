@@ -1,0 +1,49 @@
+# This program uses the Jamf Pro API (https://developer.jamf.com/apis/jamf-pro-api/index) to find all iPads with
+# a specific model and update their name to the format "First Last's iPad - [Serial#]".
+
+import requests
+import json
+
+# Get new API Token
+tokenURL = 'https://<YOURJAMFURL>.com/uapi/auth/tokens'  # The url for your JSS
+tokenHeaders = {"Authorization": "Basic <USERNAME:PASSWORD>"}  # Base64 encoded api credentials
+tokenResponse = requests.post(tokenURL, headers=tokenHeaders)
+newToken = tokenResponse.json()["token"]
+
+
+# GET request to get all iPads
+requestUrl = 'https://<YOURJAMFURL>.com/uapi/inventory/obj/mobileDevice'
+requestHeaders = {"Authorization": "jamf-token " + newToken}
+getResponse = requests.get(requestUrl, headers=requestHeaders)
+responseJ = getResponse.json()
+responseT = getResponse.text
+# print(responseT)  # Tuple of data for all iPads
+
+
+# Loop through all iPads, searching for where "model" == "iPad 6th Generation (Wi-Fi)" - these are the student iPads
+for i in range (0, len(responseJ)):
+    if responseJ[i]["model"] == "iPad 6th Generation (Wi-Fi)":  # Update or remove if you want different iPad models
+        deviceId = responseJ[i]["id"]
+        serial = responseJ[i]["serialNumber"]
+        username = responseJ[i]["username"]
+        
+        # Format name
+        nameList = username.split(".")
+        fullName = (nameList[0] + " " + nameList[1]).title()
+        newName = "{}'s iPad - {}".format(fullName, serial)
+        
+        # Create payload dict
+        payload = {
+            "name": newName
+        }
+        
+        # URL for POST request, using Jamf deviceId
+        payloadUrl = "https://<YOURJAMFURL>.com/uapi/inventory/obj/mobileDevice/{}/update".format(deviceId)
+        
+        # Make post request to update device name in the JSS
+        updateResponse = requests.post(payloadUrl, headers=requestHeaders, data=json.dumps(payload))
+        #print(updateResponse)  # For testing, make sur eyou get a 200 response
+
+
+
+
